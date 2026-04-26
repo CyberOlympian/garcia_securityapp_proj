@@ -1,14 +1,20 @@
-FROM python:3.12.3-slim-bookworm
+FROM python:3.12-slim-bookworm
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN addgroup --system app && adduser --system --ingroup app app
 
 COPY requirements.txt ./
 RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir --upgrade setuptools wheel \
     && pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
