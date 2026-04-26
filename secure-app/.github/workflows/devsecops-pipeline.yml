@@ -1,19 +1,14 @@
-name: DevSecOps Pipeline
+name: DevSecOps Pipeline (Intentional Failure Demo)
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "master"]
   pull_request:
-    branches: ["main"]
-  workflow_dispatch:
-
-permissions:
-  contents: read
 
 jobs:
-  dependency_scan:
-    name: Dependency Vulnerability Scan
+  security-and-quality:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,79 +16,58 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-
-      - name: Install dependencies and scanner
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Run pip-audit
-        run: pip-audit -r requirements.txt --strict
-
-  unit_tests:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    needs: dependency_scan
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run tests
-        run: pytest -q
+      - name: Dependency vulnerability scan (pip-audit)
+        id: dep_scan
+        continue-on-error: true
+        run: |
+          pip-audit -r requirements.txt
 
-  container_build:
-    name: Container Build
-    runs-on: ubuntu-latest
-    needs: unit_tests
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Run unit tests
+        id: unit_tests
+        continue-on-error: true
+        run: |
+          pytest -q --disable-warnings --maxfail=1
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Build container image
+        id: build_image
+        run: |
+          docker build -t secure-app:demo .
 
-      - name: Build image
-        run: docker build --tag secure-app:${{ github.sha }} .
-
-  container_scan:
-    name: Container Vulnerability Scan
-    runs-on: ubuntu-latest
-    needs: container_build
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Build image for scan
-        run: docker build --tag secure-app:${{ github.sha }} .
-
-      - name: Scan image with Trivy
-        uses: aquasecurity/trivy-action@0.24.0
+      - name: Container vulnerability scan (Trivy)
+        id: container_scan
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@master
         with:
-          image-ref: secure-app:${{ github.sha }}
-          format: table
-          vuln-type: os,library
-          severity: CRITICAL,HIGH
+          image-ref: "secure-app:demo"
+          format: "table"
+          severity: "CRITICAL,HIGH"
           ignore-unfixed: true
           exit-code: "1"
 
-  deploy:
-    name: Deploy (Demo)
-    runs-on: ubuntu-latest
-    needs: container_scan
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
-    steps:
-      - name: Simulated deployment
+      - name: Enforce failing pipeline for training
+        if: always()
         run: |
-          echo "Deploying secure-app:${{ github.sha }} to demo environment"
-          echo "Deployment completed successfully"
+          echo "Dependency scan outcome: ${{ steps.dep_scan.outcome }}"
+          echo "Unit tests outcome:      ${{ steps.unit_tests.outcome }}"
+          echo "Container scan outcome:  ${{ steps.container_scan.outcome }}"
+
+          failed_stages=""
+          [ "${{ steps.dep_scan.outcome }}" = "failure" ] && failed_stages="$failed_stages dependency-scan"
+          [ "${{ steps.unit_tests.outcome }}" = "failure" ] && failed_stages="$failed_stages unit-tests"
+          [ "${{ steps.container_scan.outcome }}" = "failure" ] && failed_stages="$failed_stages container-scan"
+
+          if [ -n "$failed_stages" ]; then
+            echo "Pipeline FAILED. Failing stage(s):$failed_stages"
+            exit 1
+          fi
+
+          # If scans/tests unexpectedly pass, still fail to keep demo behavior deterministic.
+          echo "Pipeline FAILED intentionally for DevSecOps training demo."
+          exit 1

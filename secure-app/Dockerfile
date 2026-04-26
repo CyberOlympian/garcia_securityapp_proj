@@ -1,20 +1,12 @@
-FROM python:3.12.3-slim-bookworm
-
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+FROM python:3.7-slim-buster
 
 WORKDIR /app
 
-RUN addgroup --system app && adduser --system --ingroup app app
-
-COPY requirements.txt ./
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 
-USER app
+EXPOSE 5000
 
-EXPOSE 8080
-
-CMD ["python", "-m", "flask", "--app", "app.main", "run", "--host=0.0.0.0", "--port=8080"]
+CMD ["python", "app/main.py"]
