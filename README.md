@@ -25,10 +25,19 @@ The workflow uses two jobs with an explicit dependency chain:
 2. `build`
    - Runs only after `scan` succeeds.
    - Builds the container image locally and tags it with the commit SHA.
-   - Runs a Trivy container vulnerability scan.
-   - Generates a CycloneDX SBOM for the container image.
-   - Writes trusted-build metadata only after all checks pass.
-   - Uploads build-time artifacts.
+  - Saves the image archive and image identifier as artifacts.
+
+3. `container_scan`
+  - Runs only after `build` succeeds.
+  - Loads the saved image archive.
+  - Runs a Trivy container vulnerability scan.
+  - Generates a CycloneDX SBOM for the container image.
+  - Uploads container audit artifacts.
+
+4. `promote`
+  - Runs only after `container_scan` succeeds.
+  - Writes the trusted-build marker.
+  - Uploads the promotion artifact.
 
 ## Produced Artifacts
 
@@ -54,6 +63,9 @@ The workflow produces the following auditable artifacts:
 
 - `image-identifier.txt`
   - Image reference tied directly to the commit SHA.
+
+- `secure-app-image-<sha>.tar`
+  - Exported container image archive used to transfer the build result between jobs.
 
 - `trusted-build.txt`
   - Explicit marker that the image is considered trusted only after all required checks succeed.
