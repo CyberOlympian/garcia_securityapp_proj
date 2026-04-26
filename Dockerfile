@@ -23,4 +23,4 @@ USER app
 
 EXPOSE 8080
 
-CMD ["python", "-m", "flask", "--app", "app.main", "run", "--host=0.0.0.0", "--port=8080"]
+ENTRYPOINT ["python", "-m", "flask", "--app", "app.main", "run", "--host=0.0.0.0", "--port=8080"]

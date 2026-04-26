@@ -9,7 +9,7 @@ MAX_MESSAGE_LENGTH = 200
 
 def create_app() -> Flask:
     app = Flask(__name__)
-    app.config["MAX_CONTENT_LENGTH"] = 16 * 1024  # Limit request body to 16 KB.
+    app.config["MAX_CONTENT_LENGTH"] = 16 * 1024
 
     @app.after_request
     def set_security_headers(response):
@@ -41,9 +41,7 @@ def create_app() -> Flask:
             return {"error": "'message' cannot be empty"}, 400
 
         if len(cleaned) > MAX_MESSAGE_LENGTH:
-            return {
-                "error": f"'message' exceeds max length of {MAX_MESSAGE_LENGTH}"
-            }, 400
+            return {"error": f"'message' exceeds max length of {MAX_MESSAGE_LENGTH}"}, 400
 
         return jsonify({"message": cleaned, "length": len(cleaned)}), 200
 
@@ -54,5 +52,4 @@ app = create_app()
 
 
 if __name__ == "__main__":
-    # Debug is disabled by default for safer local runs.
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", "8080")), debug=False)

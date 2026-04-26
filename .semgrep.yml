@@ -1,0 +1,21 @@
+rules:
+  - id: python.no-hardcoded-secrets
+    message: Avoid hardcoded secrets or credentials in source code.
+    severity: ERROR
+    languages:
+      - python
+    pattern-regex: '(?i)(api[_-]?key|secret|token|password)\s*=\s*["''][^"'']+["'']'
+
+  - id: python.no-eval
+    message: Avoid eval() in application code.
+    severity: ERROR
+    languages:
+      - python
+    pattern: eval(...)
+
+  - id: python.no-flask-debug
+    message: Flask debug mode must remain disabled.
+    severity: ERROR
+    languages:
+      - python
+    pattern: app.run(..., debug=True, ...)
